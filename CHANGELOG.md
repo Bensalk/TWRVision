@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.32
+- Live TV no longer auto-plays on open — shows channel list; last-played channel scrolled into view; play only on OK press
+
 ## 0.4.31
 - Fix: arrow key navigation now reaches Reload Playlist button (Down from Search → Reload → channels; Up from first channel → Reload → Search)
 

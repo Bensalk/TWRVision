@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '0.4.31';
+  var VERSION = '0.4.32';
 
   // ── PIN Lock ──────────────────────────────────────────────────────────────
   var PIN_DEFAULT = '8907';
@@ -596,19 +596,17 @@
       if (chSearch) {
         setTimeout(function () { setFocus(chSearch); }, 60);
       }
-      // Auto-restore last channel on forward navigation only (not goBack, not mid-play)
-      if (!fromGoBack && !currentChannel && lastChannelData && lastChannelData.url && channels.length > 0) {
-        var found = false;
-        for (var lci = 0; lci < channels.length; lci++) {
-          if (channels[lci].url === lastChannelData.url) { found = true; break; }
-        }
-        if (found) {
-          setTimeout(function () {
-            if (!currentChannel && lastChannelData) {
-              playUrl(lastChannelData.name, lastChannelData.group, lastChannelData.url);
+      // Scroll to last-played channel in the list (highlight only, do not auto-play)
+      if (lastChannelData && lastChannelData.url) {
+        setTimeout(function () {
+          var items = document.querySelectorAll('#ch-list .ch-item');
+          for (var lci = 0; lci < items.length; lci++) {
+            if (items[lci].getAttribute('data-churl') === lastChannelData.url) {
+              items[lci].scrollIntoView({ block: 'center' });
+              break;
             }
-          }, 200);
-        }
+          }
+        }, 150);
       }
     } else if (name === 'library') {
       renderLibrary();
