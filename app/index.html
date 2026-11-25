@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>TWRVision</title>
+<meta name="viewport" content="width=1920, height=1080">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div id="logo">TWRVision</div>
+    <div class="menu-item focusable" data-screen="home" tabindex="-1">Home</div>
+    <div class="menu-item focusable" data-screen="live" tabindex="-1">Live TV</div>
+    <div class="menu-item focusable" data-screen="library" tabindex="-1">Library</div>
+    <div class="menu-item focusable" data-screen="search" tabindex="-1">Search</div>
+    <div class="menu-item focusable" data-screen="settings" tabindex="-1">Settings</div>
+    <div class="menu-item focusable" data-screen="about" tabindex="-1">About</div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content">
+
+    <!-- HOME -->
+    <div id="screen-home" class="screen">
+      <h1>TWRVision</h1>
+      <p class="lead">Your personal TV hub. Use arrow keys or Magic Remote.</p>
+      <div class="tile-row">
+        <div class="tile focusable" tabindex="-1" data-goto="live">
+          <div class="tile-icon">▶</div>
+          <div class="tile-label">Live TV</div>
+        </div>
+        <div class="tile focusable" tabindex="-1" data-goto="library">
+          <div class="tile-icon">≡</div>
+          <div class="tile-label">Library</div>
+        </div>
+        <div class="tile focusable" tabindex="-1" data-goto="search">
+          <div class="tile-icon">⌕</div>
+          <div class="tile-label">Search</div>
+        </div>
+        <div class="tile focusable" tabindex="-1" data-goto="settings">
+          <div class="tile-icon">⚙</div>
+          <div class="tile-label">Settings</div>
+        </div>
+        <div class="tile focusable" tabindex="-1" data-action="exit">
+          <div class="tile-icon">⏻</div>
+          <div class="tile-label">Exit</div>
+        </div>
+      </div>
+      <div id="now-playing-bar" class="focusable hidden" tabindex="-1" data-goto="live">
+        <span id="np-name"></span>
+        <span id="np-hint">▶ OK to resume</span>
+      </div>
+    </div>
+
+    <!-- LIVE TV -->
+    <div id="screen-live" class="screen hidden">
+      <!-- Player area -->
+      <div id="player-wrap">
+        <video id="hv-video" autoplay playsinline></video>
+        <div id="player-osd">
+          <div id="osd-name"></div>
+          <div id="osd-group"></div>
+          <div id="osd-status"></div>
+        </div>
+        <div id="player-controls" class="hidden">
+          <div id="ctrl-info">
+            <div id="ctrl-name"></div>
+            <div id="ctrl-group"></div>
+          </div>
+          <div id="ctrl-buttons">
+            <button id="ctrl-fullscreen" class="ctrl-btn focusable" tabindex="-1"><span id="ctrl-fs-label">⛶ Full</span></button>
+            <button id="ctrl-aspect" class="ctrl-btn focusable" tabindex="-1">⬚ <span id="ctrl-aspect-label">Stretch</span></button>
+            <button id="ctrl-exit" class="ctrl-btn focusable" tabindex="-1">← Back</button>
+          </div>
+        </div>
+        <div id="player-spinner" class="hidden">Loading…</div>
+        <div id="player-error" class="hidden">Could not load stream</div>
+      </div>
+      <!-- Channel list panel -->
+      <div id="ch-panel">
+        <div id="ch-search-row">
+          <input id="ch-search" class="focusable" type="text" placeholder="Filter channels…" tabindex="-1">
+          <button id="ch-refresh" class="focusable" tabindex="-1" title="Reload playlist">↺ Reload</button>
+        </div>
+        <div id="ch-list"></div>
+        <div id="ch-empty" class="hidden">No channels loaded yet.<br>Go to Library to add a playlist.</div>
+      </div>
+    </div>
+
+    <!-- LIBRARY -->
+    <div id="screen-library" class="screen hidden">
+      <h1>Library</h1>
+      <p class="lead" id="lib-status">Pick a playlist to load into Live TV.</p>
+      <div id="lib-sections"></div>
+    </div>
+
+    <!-- SEARCH -->
+    <div id="screen-search" class="screen hidden">
+      <h1>Search</h1>
+      <div class="search-row">
+        <input id="search-input" class="focusable" type="text" placeholder="Type a channel name…" tabindex="-1">
+      </div>
+      <div id="search-results"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="screen-settings" class="screen hidden">
+      <h1>Settings</h1>
+
+      <div class="setting-section">
+        <div class="setting-title">Theme</div>
+        <div class="setting-row" id="theme-row"></div>
+      </div>
+
+      <div class="setting-section">
+        <div class="setting-title">Custom M3U / M3U8 Playlist URL</div>
+        <div class="setting-row">
+          <input id="custom-url" class="focusable" type="text" placeholder="https://example.com/playlist.m3u" tabindex="-1">
+          <button id="custom-add" class="btn focusable" tabindex="-1">Add</button>
+        </div>
+        <div id="custom-list"></div>
+      </div>
+
+      <div class="setting-section">
+        <div class="setting-title">Saved Playlists</div>
+        <div id="saved-list"></div>
+      </div>
+
+      <div class="setting-section">
+        <div class="setting-title">Extra Sources</div>
+        <p class="setting-hint">These are not from iptv-org. Enable to show them in Library.</p>
+        <div id="extra-sources-list"></div>
+      </div>
+    </div>
+
+    <!-- ABOUT -->
+    <div id="screen-about" class="screen hidden">
+      <h1>About</h1>
+      <p class="lead">TWRVision <span id="ver">0.2.0</span></p>
+      <p class="info">Created by Bensal</p>
+      <p class="info">IPTV data: iptv-org community (iptv-org.github.io)</p>
+      <p class="info" id="sysinfo"></p>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /app -->
+
+<!-- hls.js ES5 build (Chromium 53 compatible) loaded from CDN -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.17/dist/hls.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

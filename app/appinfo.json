@@ -1,0 +1,15 @@
+{
+  "id": "com.bensal.twrvision",
+  "version": "0.4.18",
+  "vendor": "Bensal",
+  "type": "web",
+  "main": "index.html",
+  "title": "TWRVision",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "iconColor": "#0b1020",
+  "bgColor": "#0b1020",
+  "splashBackground": "splashBackground.png",
+  "resolution": "1920x1080",
+  "requiredACG": []
+}

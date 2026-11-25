@@ -1,0 +1,39 @@
+name: Build HomeVision IPK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install the LG webOS tools
+        run: npm install -g @webos-tools/cli
+
+      - name: Read the version number
+        id: ver
+        run: echo "version=$(node -p "require('./app/appinfo.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Package the app
+        run: ares-package app -o out
+
+      - name: Publish to Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ steps.ver.outputs.version }}"
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          gh release create "$TAG" out/*.ipk --title "HomeVision $TAG" --notes "Install file for the TV. See INSTALL.md."
