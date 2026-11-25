@@ -82,7 +82,9 @@
       <div id="ch-panel">
         <div id="ch-search-row">
           <input id="ch-search" class="focusable" type="text" placeholder="Filter channels…" tabindex="-1">
-          <button id="ch-refresh" class="focusable" tabindex="-1" title="Reload playlist">↺ Reload</button>
+        </div>
+        <div id="ch-refresh-row">
+          <button id="ch-refresh" class="focusable" tabindex="-1">↺ Reload Playlist</button>
         </div>
         <div id="ch-list"></div>
         <div id="ch-empty" class="hidden">No channels loaded yet.<br>Go to Library to add a playlist.</div>
@@ -133,19 +135,59 @@
         <p class="setting-hint">These are not from iptv-org. Enable to show them in Library.</p>
         <div id="extra-sources-list"></div>
       </div>
+
+      <div class="setting-section">
+        <div class="setting-title">Security</div>
+        <p class="setting-hint">Change the PIN required to access Settings and About.</p>
+        <button id="change-pin-btn" class="btn focusable" tabindex="-1">🔑 Change PIN</button>
+        <p class="setting-hint" style="margin-top:16px;">App Lock — require PIN every time TWRVision is opened.</p>
+        <button id="app-lock-btn" class="btn focusable" tabindex="-1">🔓 App Lock: OFF</button>
+      </div>
     </div>
 
     <!-- ABOUT -->
     <div id="screen-about" class="screen hidden">
       <h1>About</h1>
-      <p class="lead">TWRVision <span id="ver">0.2.0</span></p>
-      <p class="info">Created by Bensal</p>
+      <p class="lead">TWRVision <span id="ver">0.4.21</span></p>
+      <p class="info">The Woods Resorts</p>
       <p class="info">IPTV data: iptv-org community (iptv-org.github.io)</p>
       <p class="info" id="sysinfo"></p>
     </div>
 
   </div><!-- /content -->
 </div><!-- /app -->
+
+<!-- Toast notification -->
+<div id="toast" class="hidden"></div>
+
+<!-- PIN lock overlay -->
+<div id="pin-overlay" class="hidden">
+  <div id="pin-box">
+    <button class="focusable" id="pin-back" tabindex="-1">← Go Back</button>
+    <div id="pin-title">Enter PIN</div>
+    <div id="pin-dots">
+      <span class="pin-dot" id="pd0"></span>
+      <span class="pin-dot" id="pd1"></span>
+      <span class="pin-dot" id="pd2"></span>
+      <span class="pin-dot" id="pd3"></span>
+    </div>
+    <div id="pin-msg"></div>
+    <div id="pin-keypad">
+      <button class="pin-key focusable" data-k="1" tabindex="-1">1</button>
+      <button class="pin-key focusable" data-k="2" tabindex="-1">2</button>
+      <button class="pin-key focusable" data-k="3" tabindex="-1">3</button>
+      <button class="pin-key focusable" data-k="4" tabindex="-1">4</button>
+      <button class="pin-key focusable" data-k="5" tabindex="-1">5</button>
+      <button class="pin-key focusable" data-k="6" tabindex="-1">6</button>
+      <button class="pin-key focusable" data-k="7" tabindex="-1">7</button>
+      <button class="pin-key focusable" data-k="8" tabindex="-1">8</button>
+      <button class="pin-key focusable" data-k="9" tabindex="-1">9</button>
+      <button class="pin-key focusable" id="pin-clear" tabindex="-1">⌫</button>
+      <button class="pin-key focusable" data-k="0" tabindex="-1">0</button>
+      <button class="pin-key focusable" id="pin-cancel" tabindex="-1">✕</button>
+    </div>
+  </div>
+</div>
 
 <!-- hls.js ES5 build (Chromium 53 compatible) loaded from CDN -->
 <script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.17/dist/hls.min.js"></script>

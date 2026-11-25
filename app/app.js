@@ -2,7 +2,217 @@
 (function () {
   'use strict';
 
-  var VERSION = '0.4.18';
+  var VERSION = '0.4.30';
+
+  // ── PIN Lock ──────────────────────────────────────────────────────────────
+  var PIN_DEFAULT = '8907';
+  var PIN_CORRECT = (function () { try { var v = localStorage.getItem('hv_pin'); return v || PIN_DEFAULT; } catch(e) { return PIN_DEFAULT; } })();
+  var pinEntry = '';
+  var pinCallback = null;
+  var pinDismissTimer = null;
+  var pinUnlocked = false;
+
+  function updatePinDots() {
+    for (var i = 0; i < 4; i++) {
+      var dot = document.getElementById('pd' + i);
+      if (dot) dot.className = 'pin-dot' + (i < pinEntry.length ? ' filled' : '');
+    }
+  }
+
+  function showPinMsg(msg) {
+    var el = document.getElementById('pin-msg');
+    if (el) el.textContent = msg;
+  }
+
+  function closePinOverlay() {
+    clearTimeout(pinDismissTimer);
+    pinEntry = '';
+    pinCallback = null;
+    updatePinDots();
+    showPinMsg('');
+    var ov = document.getElementById('pin-overlay');
+    if (ov) ov.classList.add('hidden');
+  }
+
+  function openPinOverlay(onSuccess) {
+    pinEntry = '';
+    pinCallback = onSuccess;
+    updatePinDots();
+    showPinMsg('');
+    var ov = document.getElementById('pin-overlay');
+    if (ov) ov.classList.remove('hidden');
+    var backBtn2 = document.getElementById('pin-back');
+    if (backBtn2) setTimeout(function () { setFocus(backBtn2); }, 60);
+  }
+
+  function handlePinKey(k) {
+    if (pinEntry.length >= 4) return;
+    pinEntry += k;
+    updatePinDots();
+    if (pinEntry.length === 4) {
+      if (pinEntry === PIN_CORRECT) {
+        var cb = pinCallback;
+        closePinOverlay();
+        if (cb) cb();
+      } else {
+        showPinMsg('Wrong PIN. Try again.');
+        var dots = document.querySelectorAll('.pin-dot');
+        for (var di = 0; di < dots.length; di++) { dots[di].className = 'pin-dot pin-wrong'; }
+        pinDismissTimer = setTimeout(function () {
+          pinEntry = '';
+          updatePinDots();
+          showPinMsg('');
+        }, 1500);
+      }
+    }
+  }
+
+  function initPinKeypad() {
+    var keys = document.querySelectorAll('.pin-key[data-k]');
+    for (var i = 0; i < keys.length; i++) {
+      (function (btn) {
+        btn.addEventListener('click', function () { handlePinKey(btn.getAttribute('data-k')); });
+      })(keys[i]);
+    }
+    var clearBtn = document.getElementById('pin-clear');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', function () {
+        pinEntry = pinEntry.slice(0, -1);
+        updatePinDots();
+        showPinMsg('');
+      });
+    }
+    var cancelBtn = document.getElementById('pin-cancel');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', function () { closePinOverlay(); });
+    }
+    var backBtn = document.getElementById('pin-back');
+    if (backBtn) {
+      backBtn.addEventListener('click', function () { closePinOverlay(); });
+    }
+  }
+
+  // ── Change PIN flow ───────────────────────────────────────────────────────
+  var changePinStep = 0; // 0=idle, 1=enter current, 2=enter new, 3=confirm new
+  var changePinNew = '';
+
+  function startChangePinFlow() {
+    changePinStep = 1;
+    changePinNew = '';
+    openPinOverlay(function () {
+      // Step 1 passed (current PIN correct) — now ask for new PIN
+      changePinStep = 2;
+      openChangePinStep2();
+    });
+    var title = document.getElementById('pin-title');
+    if (title) title.textContent = 'Enter Current PIN';
+  }
+
+  function openChangePinStep2() {
+    pinEntry = '';
+    updatePinDots();
+    showPinMsg('');
+    var ov = document.getElementById('pin-overlay');
+    if (ov) ov.classList.remove('hidden');
+    var title = document.getElementById('pin-title');
+    if (title) title.textContent = 'Enter New PIN';
+    var backBtn2 = document.getElementById('pin-back');
+    if (backBtn2) setTimeout(function () { setFocus(backBtn2); }, 60);
+    // Override pinCallback for step 2
+    pinCallback = function () {
+      changePinNew = pinEntry;
+      // Step 3: confirm new PIN
+      changePinStep = 3;
+      pinEntry = '';
+      updatePinDots();
+      showPinMsg('');
+      var ov2 = document.getElementById('pin-overlay');
+      if (ov2) ov2.classList.remove('hidden');
+      var title2 = document.getElementById('pin-title');
+      if (title2) title2.textContent = 'Confirm New PIN';
+      var backBtn3 = document.getElementById('pin-back');
+      if (backBtn3) setTimeout(function () { setFocus(backBtn3); }, 60);
+      pinCallback = function () {
+        // Confirmed — save new PIN
+        try { localStorage.setItem('hv_pin', changePinNew); } catch(e) {}
+        PIN_CORRECT = changePinNew;
+        changePinStep = 0;
+        changePinNew = '';
+        closePinOverlay();
+        var title3 = document.getElementById('pin-title');
+        if (title3) title3.textContent = 'Enter PIN';
+        showToast('PIN changed successfully');
+      };
+      // Reuse handlePinKey but check against changePinNew
+      pinChangingConfirm = true;
+    };
+    pinChangingNew = true;
+  }
+
+  var pinChangingNew = false;
+  var pinChangingConfirm = false;
+
+  // Wrap handlePinKey to support Change PIN steps
+  var _origHandlePinKey = handlePinKey;
+  handlePinKey = function (k) {
+    if (changePinStep === 2 && pinChangingNew) {
+      if (pinEntry.length >= 4) return;
+      pinEntry += k;
+      updatePinDots();
+      if (pinEntry.length === 4) {
+        pinChangingNew = false;
+        var cb = pinCallback;
+        closePinOverlayKeepTitle();
+        if (cb) cb();
+      }
+      return;
+    }
+    if (changePinStep === 3 && pinChangingConfirm) {
+      if (pinEntry.length >= 4) return;
+      pinEntry += k;
+      updatePinDots();
+      if (pinEntry.length === 4) {
+        if (pinEntry === changePinNew) {
+          pinChangingConfirm = false;
+          var cb2 = pinCallback;
+          closePinOverlay();
+          if (cb2) cb2();
+        } else {
+          showPinMsg('PINs do not match. Try again.');
+          var dots = document.querySelectorAll('.pin-dot');
+          for (var di = 0; di < dots.length; di++) { dots[di].className = 'pin-dot pin-wrong'; }
+          pinDismissTimer = setTimeout(function () {
+            pinEntry = '';
+            updatePinDots();
+            showPinMsg('');
+          }, 1500);
+        }
+      }
+      return;
+    }
+    _origHandlePinKey(k);
+  };
+
+  function closePinOverlayKeepTitle() {
+    clearTimeout(pinDismissTimer);
+    pinEntry = '';
+    updatePinDots();
+    showPinMsg('');
+    var ov = document.getElementById('pin-overlay');
+    if (ov) ov.classList.add('hidden');
+  }
+
+  function showToast(msg) {
+    var t = document.getElementById('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.remove('hidden');
+    t.classList.add('toast-show');
+    setTimeout(function () {
+      t.classList.remove('toast-show');
+      t.classList.add('hidden');
+    }, 2500);
+  }
 
   // ── Themes ─────────────────────────────────────────────────────────────
   var THEMES = [
@@ -18,49 +228,49 @@
     { name: 'Slate',    bg: '#0E1116', surface: '#1A1F27', accent: '#9AA7B8', glow: '#232A35' }
   ];
 
-  // ── IPTV-org library (same as PadVision) ────────────────────────────────
+  // ── IPTV-org library ────────────────────────────────────────────────────
   var BASE = 'https://iptv-org.github.io/iptv/';
   var LIBRARY = [
-    { section: 'Popular',              name: 'India',                  url: BASE + 'countries/in.m3u' },
-    { section: 'Popular',              name: 'Malayalam',              url: BASE + 'languages/mal.m3u' },
-    { section: 'Popular',              name: 'Hindi',                  url: BASE + 'languages/hin.m3u' },
-    { section: 'Popular',              name: 'Tamil',                  url: BASE + 'languages/tam.m3u' },
-    { section: 'Popular',              name: 'Telugu',                 url: BASE + 'languages/tel.m3u' },
-    { section: 'Popular',              name: 'English',                url: BASE + 'languages/eng.m3u' },
-    { section: 'Popular',              name: 'All channels (large)',   url: BASE + 'index.m3u' },
-    { section: 'Indian Languages',     name: 'Kannada',                url: BASE + 'languages/kan.m3u' },
-    { section: 'Indian Languages',     name: 'Bengali',                url: BASE + 'languages/ben.m3u' },
-    { section: 'Indian Languages',     name: 'Marathi',                url: BASE + 'languages/mar.m3u' },
-    { section: 'Indian Languages',     name: 'Punjabi',                url: BASE + 'languages/pan.m3u' },
-    { section: 'Indian Languages',     name: 'Gujarati',               url: BASE + 'languages/guj.m3u' },
-    { section: 'Indian Languages',     name: 'Urdu',                   url: BASE + 'languages/urd.m3u' },
-    { section: 'Indian Languages',     name: 'Odia',                   url: BASE + 'languages/ory.m3u' },
-    { section: 'Indian Languages',     name: 'Assamese',               url: BASE + 'languages/asm.m3u' },
-    { section: 'Indian Languages',     name: 'Sindhi',                 url: BASE + 'languages/snd.m3u' },
-    { section: 'Indian Languages',     name: 'Nepali',                 url: BASE + 'languages/nep.m3u' },
-    { section: 'TV Shows & More',      name: 'Series',                 url: BASE + 'categories/series.m3u' },
-    { section: 'TV Shows & More',      name: 'Animation',              url: BASE + 'categories/animation.m3u' },
-    { section: 'TV Shows & More',      name: 'Family',                 url: BASE + 'categories/family.m3u' },
-    { section: 'TV Shows & More',      name: 'Classic',                url: BASE + 'categories/classic.m3u' },
-    { section: 'TV Shows & More',      name: 'Lifestyle',              url: BASE + 'categories/lifestyle.m3u' },
-    { section: 'TV Shows & More',      name: 'Cooking',                url: BASE + 'categories/cooking.m3u' },
-    { section: 'TV Shows & More',      name: 'Travel',                 url: BASE + 'categories/travel.m3u' },
-    { section: 'Categories',           name: 'News',                   url: BASE + 'categories/news.m3u' },
-    { section: 'Categories',           name: 'Music',                  url: BASE + 'categories/music.m3u' },
-    { section: 'Categories',           name: 'Sports',                 url: BASE + 'categories/sports.m3u' },
-    { section: 'Categories',           name: 'Movies',                 url: BASE + 'categories/movies.m3u' },
-    { section: 'Categories',           name: 'Kids',                   url: BASE + 'categories/kids.m3u' },
-    { section: 'Categories',           name: 'Documentary',            url: BASE + 'categories/documentary.m3u' },
-    { section: 'Categories',           name: 'Entertainment',          url: BASE + 'categories/entertainment.m3u' },
-    { section: 'Categories',           name: 'Comedy',                 url: BASE + 'categories/comedy.m3u' },
-    { section: 'Categories',           name: 'Religious',              url: BASE + 'categories/religious.m3u' },
-    { section: 'Categories',           name: 'Education',              url: BASE + 'categories/education.m3u' },
-    { section: 'Categories',           name: 'Business',               url: BASE + 'categories/business.m3u' },
-    { section: 'Categories',           name: 'Science & Tech',         url: BASE + 'categories/science.m3u' },
-    { section: 'Categories',           name: 'Weather',                url: BASE + 'categories/weather.m3u' },
-    { section: 'Categories',           name: 'Auto',                   url: BASE + 'categories/auto.m3u' },
-    { section: 'Categories',           name: 'Shop',                   url: BASE + 'categories/shop.m3u' },
-    { section: 'Categories',           name: 'Outdoor',                url: BASE + 'categories/outdoor.m3u' },
+    // ── Indian Channels (by language) ──────────────────────────────────────
+    { section: 'Indian Channels',     name: 'All India',              url: BASE + 'countries/in.m3u' },
+    { section: 'Indian Channels',     name: 'Malayalam',              url: BASE + 'languages/mal.m3u' },
+    { section: 'Indian Channels',     name: 'Hindi',                  url: BASE + 'languages/hin.m3u' },
+    { section: 'Indian Channels',     name: 'Tamil',                  url: BASE + 'languages/tam.m3u' },
+    { section: 'Indian Channels',     name: 'Telugu',                 url: BASE + 'languages/tel.m3u' },
+    { section: 'Indian Channels',     name: 'Kannada',                url: BASE + 'languages/kan.m3u' },
+    { section: 'Indian Channels',     name: 'Bengali',                url: BASE + 'languages/ben.m3u' },
+    { section: 'Indian Channels',     name: 'Marathi',                url: BASE + 'languages/mar.m3u' },
+    { section: 'Indian Channels',     name: 'Punjabi',                url: BASE + 'languages/pan.m3u' },
+    { section: 'Indian Channels',     name: 'Gujarati',               url: BASE + 'languages/guj.m3u' },
+    { section: 'Indian Channels',     name: 'Urdu',                   url: BASE + 'languages/urd.m3u' },
+    { section: 'Indian Channels',     name: 'Odia',                   url: BASE + 'languages/ory.m3u' },
+    { section: 'Indian Channels',     name: 'Assamese',               url: BASE + 'languages/asm.m3u' },
+    { section: 'Indian Channels',     name: 'Sindhi',                 url: BASE + 'languages/snd.m3u' },
+    // ── Indian Genre (filtered from India playlist — Indian channels only) ───
+    { section: 'Indian Genre',        name: 'Movies',                 url: BASE + 'countries/in.m3u', filterGroup: 'Movies' },
+    { section: 'Indian Genre',        name: 'Sports',                 url: BASE + 'countries/in.m3u', filterGroup: 'Sports' },
+    { section: 'Indian Genre',        name: 'Music',                  url: BASE + 'countries/in.m3u', filterGroup: 'Music' },
+    { section: 'Indian Genre',        name: 'News',                   url: BASE + 'countries/in.m3u', filterGroup: 'News' },
+    { section: 'Indian Genre',        name: 'Entertainment',          url: BASE + 'countries/in.m3u', filterGroup: 'Entertainment' },
+    { section: 'Indian Genre',        name: 'Kids',                   url: BASE + 'countries/in.m3u', filterGroup: 'Kids' },
+    { section: 'Indian Genre',        name: 'Religious',              url: BASE + 'countries/in.m3u', filterGroup: 'Religious' },
+    { section: 'Indian Genre',        name: 'Documentary',            url: BASE + 'countries/in.m3u', filterGroup: 'Documentary' },
+    { section: 'Indian Genre',        name: 'Cooking',                url: BASE + 'countries/in.m3u', filterGroup: 'Cooking' },
+    // ── International ───────────────────────────────────────────────────────
+    { section: 'International',       name: 'English',                url: BASE + 'languages/eng.m3u' },
+    { section: 'International',       name: 'All channels (large)',   url: BASE + 'index.m3u' },
+    { section: 'International',       name: 'Series',                 url: BASE + 'categories/series.m3u' },
+    { section: 'International',       name: 'Animation',              url: BASE + 'categories/animation.m3u' },
+    { section: 'International',       name: 'Family',                 url: BASE + 'categories/family.m3u' },
+    { section: 'International',       name: 'Classic',                url: BASE + 'categories/classic.m3u' },
+    { section: 'International',       name: 'Lifestyle',              url: BASE + 'categories/lifestyle.m3u' },
+    { section: 'International',       name: 'Travel',                 url: BASE + 'categories/travel.m3u' },
+    { section: 'International',       name: 'Comedy',                 url: BASE + 'categories/comedy.m3u' },
+    { section: 'International',       name: 'Education',              url: BASE + 'categories/education.m3u' },
+    { section: 'International',       name: 'Business',               url: BASE + 'categories/business.m3u' },
+    { section: 'International',       name: 'Science & Tech',         url: BASE + 'categories/science.m3u' },
+    { section: 'International',       name: 'Weather',                url: BASE + 'categories/weather.m3u' },
+    // ── International Languages ─────────────────────────────────────────────
     { section: 'International Languages', name: 'Arabic',              url: BASE + 'languages/ara.m3u' },
     { section: 'International Languages', name: 'Spanish',             url: BASE + 'languages/spa.m3u' },
     { section: 'International Languages', name: 'French',              url: BASE + 'languages/fra.m3u' },
@@ -350,6 +560,17 @@
   // fromGoBack=true when called by goBack() — suppresses auto-focus resets in
   // renderSettings/renderLibrary and prevents auto-play on the Live TV screen.
   function showScreen(name, skipHistory, fromGoBack) {
+    // PIN-locked screens
+    if ((name === 'settings' || name === 'about') && !pinUnlocked) {
+      var targetName = name;
+      openPinOverlay(function () {
+        pinUnlocked = true;
+        showScreen(targetName, skipHistory, fromGoBack);
+        pinUnlocked = false;
+      });
+      return;
+    }
+    pinUnlocked = false;
     if (!skipHistory && currentScreen !== name) {
       screenHistory.push(currentScreen);
       if (screenHistory.length > 10) screenHistory.shift(); // cap stack
@@ -417,6 +638,13 @@
   // ── Activate (OK press or click) ─────────────────────────────────────────
   function activate() {
     if (!focusedEl) return;
+    // Handle PIN keypad OK presses
+    var pinK = focusedEl.getAttribute('data-k');
+    if (pinK !== null) { handlePinKey(pinK); return; }
+    if (focusedEl.id === 'pin-clear') {
+      pinEntry = pinEntry.slice(0, -1); updatePinDots(); showPinMsg(''); return;
+    }
+    if (focusedEl.id === 'pin-cancel' || focusedEl.id === 'pin-back') { closePinOverlay(); return; }
     var sc = focusedEl.getAttribute('data-screen');
     if (sc) { showScreen(sc); return; }
     var gt = focusedEl.getAttribute('data-goto');
@@ -424,12 +652,23 @@
     var act = focusedEl.getAttribute('data-action');
     if (act === 'exit') { try { window.close(); } catch(e2) {} return; }
     var libUrl = focusedEl.getAttribute('data-liburl');
-    if (libUrl) { loadPlaylist(libUrl, focusedEl.textContent); return; }
+    if (libUrl) { var libFilter = focusedEl.getAttribute('data-libfilter'); loadPlaylist(libUrl, focusedEl.textContent, libFilter); return; }
     var chUrl = focusedEl.getAttribute('data-churl');
     if (chUrl !== null) { playChannel(parseInt(focusedEl.getAttribute('data-chidx'), 10)); return; }
     var srUrl = focusedEl.getAttribute('data-srurl');
     if (srUrl !== null) { playUrl(focusedEl.getAttribute('data-srname'), focusedEl.getAttribute('data-srgroup'), srUrl); return; }
     if (focusedEl.id === 'custom-add') { addCustomUrl(); return; }
+    if (focusedEl.id === 'change-pin-btn') { startChangePinFlow(); return; }
+    if (focusedEl.id === 'app-lock-btn') {
+      if (!appLockEnabled) {
+        // Enabling: require current PIN first for security
+        openPinOverlay(function () { setAppLock(true); });
+        document.getElementById('pin-title').textContent = 'Confirm PIN to Enable App Lock';
+      } else {
+        setAppLock(false);
+      }
+      return;
+    }
     if (focusedEl.id === 'ch-refresh') { var chRef = $('ch-refresh'); if (chRef) chRef.click(); return; }
     if (focusedEl.id === 'ctrl-aspect') { cycleAspect(); return; }
     if (focusedEl.id === 'ctrl-fullscreen') { toggleFullscreen(); return; }
@@ -515,6 +754,47 @@
   // ── Keyboard handler ──────────────────────────────────────────────────────
   function handleKeyDown(e) {
     var k = e.keyCode;
+
+    // If PIN overlay is open, handle number/backspace/escape keys
+    var pinOv = document.getElementById('pin-overlay');
+    if (pinOv && !pinOv.classList.contains('hidden')) {
+      // Debug: show keycode in PIN message so we can identify the Back key
+      var dbgEl = document.getElementById('pin-msg');
+      if (dbgEl && k !== 37 && k !== 38 && k !== 39 && k !== 40 && k !== 13) { dbgEl.textContent = 'key:' + k; }
+      // 0–9 keys — check keyCode (48-57, numpad 96-105) and e.key string
+      var digitStr = null;
+      if (k >= 48 && k <= 57) { digitStr = String(k - 48); }
+      else if (k >= 96 && k <= 105) { digitStr = String(k - 96); }
+      else if (e.key && e.key.length === 1 && e.key >= '0' && e.key <= '9') { digitStr = e.key; }
+      if (digitStr !== null) {
+        handlePinKey(digitStr);
+        e.preventDefault(); e.stopPropagation();
+        return false;
+      }
+      // Backspace: clear last digit; if nothing entered, close overlay (acts as back)
+      if (k === 8) {
+        if (pinEntry.length === 0) {
+          closePinOverlay(); e.preventDefault(); e.stopPropagation(); return false;
+        }
+        pinEntry = pinEntry.slice(0, -1);
+        updatePinDots();
+        showPinMsg('');
+        e.preventDefault(); e.stopPropagation();
+        return false;
+      }
+      // Escape / Back / XF86Back cancels
+      if (k === 27 || k === 461 || k === 10009) {
+        closePinOverlay();
+        e.preventDefault(); e.stopPropagation();
+        return false;
+      }
+      // Allow arrow/OK keys to navigate within the keypad, block everything else
+      if (k !== 37 && k !== 38 && k !== 39 && k !== 40 && k !== 13) {
+        e.preventDefault(); e.stopPropagation();
+        return false;
+      }
+    }
+
     var isInput = focusedEl && (focusedEl.tagName === 'INPUT' || focusedEl.tagName === 'TEXTAREA');
     var isChSearch = focusedEl && focusedEl.id === 'ch-search';
     var isCustomUrl = focusedEl && focusedEl.id === 'custom-url';
@@ -753,7 +1033,7 @@
   }
 
   // ── Load playlist ─────────────────────────────────────────────────────────
-  function loadPlaylist(url, label) {
+  function loadPlaylist(url, label, filterGroup) {
     var libStatus = $('lib-status');
     if (libStatus) libStatus.textContent = 'Loading ' + (label || url) + '…';
     xhrGet(url, function (err, text) {
@@ -762,6 +1042,10 @@
         return;
       }
       channels = parseM3u(text);
+      if (filterGroup) {
+        var fg = filterGroup.toLowerCase();
+        channels = channels.filter(function (ch) { return ch.group.toLowerCase().indexOf(fg) !== -1; });
+      }
       filteredChannels = channels.slice();
       loadedPlaylistUrl = url;
       storageSet('hv_loaded_url', url);
@@ -1034,6 +1318,7 @@
           btn.className = 'lib-item focusable' + (loadedPlaylistUrl === it.url ? ' lib-loaded' : '');
           btn.setAttribute('tabindex', '-1');
           btn.setAttribute('data-liburl', it.url);
+          if (it.filterGroup) btn.setAttribute('data-libfilter', it.filterGroup);
           btn.textContent = it.name;
           rowDiv.appendChild(btn);
         })(items[ii]);
@@ -1137,6 +1422,12 @@
         })(EXTRA_SOURCES[xi]);
       }
     }
+    var appLockBtn = document.getElementById('app-lock-btn');
+    if (appLockBtn) {
+      appLockBtn.textContent = appLockEnabled ? '🔒 App Lock: ON' : '🔓 App Lock: OFF';
+      appLockBtn.className = 'btn focusable' + (appLockEnabled ? ' extra-toggle-on' : '');
+      appLockBtn.setAttribute('tabindex', '-1');
+    }
     if (!suppressFocus) {
       setTimeout(function () {
         var first = $('theme-row') ? $('theme-row').querySelector('.theme-btn') : null;
@@ -1175,6 +1466,16 @@
       .replace(/"/g, '&quot;');
   }
 
+  // ── App Lock ──────────────────────────────────────────────────────────────
+  var appLockEnabled = storageGet('hv_app_lock', '0') === '1';
+
+  function setAppLock(on) {
+    appLockEnabled = on;
+    storageSet('hv_app_lock', on ? '1' : '0');
+    renderSettings();
+    showToast('App Lock ' + (on ? 'enabled' : 'disabled'));
+  }
+
   // ── Init ──────────────────────────────────────────────────────────────────
   document.getElementById('ver').textContent = VERSION;
   document.getElementById('sysinfo').textContent =
@@ -1182,7 +1483,26 @@
 
   applyTheme(themeIndex);
   applyAspect(aspectMode);
-  showScreen('home');
+  initPinKeypad();
+
+  if (appLockEnabled) {
+    showScreen('home', true); // show home but don't focus sidebar yet
+    // Cover with PIN overlay — if Go Back pressed, try to exit app
+    var _appLockBack = document.getElementById('pin-back');
+    openPinOverlay(function () {
+      // correct PIN — proceed normally
+      setTimeout(function () {
+        setFocus(document.querySelector('.menu-item[data-screen="home"]'));
+      }, 80);
+    });
+    document.getElementById('pin-title').textContent = 'App Locked — Enter PIN';
+    // Override Go Back on launch to exit app
+    if (_appLockBack) {
+      _appLockBack._appLockExit = true;
+    }
+  } else {
+    showScreen('home');
+  }
 
   setTimeout(function () {
     setFocus(document.querySelector('.menu-item[data-screen="home"]'));
