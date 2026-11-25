@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '0.4.30';
+  var VERSION = '0.4.31';
 
   // ── PIN Lock ──────────────────────────────────────────────────────────────
   var PIN_DEFAULT = '8907';
@@ -858,9 +858,9 @@
       var chList2 = $('ch-list');
       var chItems = chList2 ? Array.prototype.slice.call(chList2.querySelectorAll('.ch-item')) : [];
       var ci3 = chItems.indexOf(focusedEl);
-      if (k === 38) { // Up — prev item, or back to ch-search at top
+      if (k === 38) { // Up — prev item, or back to ch-refresh, then ch-search
         if (ci3 > 0) { setFocus(chItems[ci3 - 1]); }
-        else { var cs3 = $('ch-search'); if (cs3) setFocus(cs3); }
+        else { var cr3 = $('ch-refresh'); if (cr3) setFocus(cr3); else { var cs3 = $('ch-search'); if (cs3) setFocus(cs3); } }
       } else { // Down — next item (stop at bottom)
         if (ci3 < chItems.length - 1) { setFocus(chItems[ci3 + 1]); }
       }
@@ -873,6 +873,7 @@
     } else if (k === 38) {
       if (!isInput) { move('up'); e.preventDefault(); }
       else if (isChSearch) { move('up'); e.preventDefault(); }
+      else if (focusedEl && focusedEl.id === 'ch-refresh') { var cs4 = $('ch-search'); if (cs4) { setFocus(cs4); e.preventDefault(); } }
       else if (isCustomUrl) { move('up'); e.preventDefault(); }
     } else if (k === 39) {
       if (!isInput) { move('right'); e.preventDefault(); }
@@ -880,9 +881,13 @@
       if (!isInput) { move('down'); e.preventDefault(); }
       else if (isCustomUrl) { move('down'); e.preventDefault(); }
       else if (isChSearch) {
-        var firstCh = document.querySelector('#ch-list .ch-item');
-        if (firstCh) { setFocus(firstCh); e.preventDefault(); }
-        else { move('down'); e.preventDefault(); }
+        var chRefDown = $('ch-refresh');
+        if (chRefDown) { setFocus(chRefDown); e.preventDefault(); }
+        else { var firstCh = document.querySelector('#ch-list .ch-item'); if (firstCh) { setFocus(firstCh); e.preventDefault(); } else { move('down'); e.preventDefault(); } }
+      } else if (focusedEl && focusedEl.id === 'ch-refresh') {
+        var firstCh2 = document.querySelector('#ch-list .ch-item');
+        if (firstCh2) { setFocus(firstCh2); e.preventDefault(); }
+        e.preventDefault();
       }
     } else if (k === 13) {
       if (isInput) {

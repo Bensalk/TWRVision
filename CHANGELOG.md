@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.31
+- Fix: arrow key navigation now reaches Reload Playlist button (Down from Search → Reload → channels; Up from first channel → Reload → Search)
+
 ## 0.4.30
 - Settings → Security: App Lock toggle — when ON, PIN is required every time the app opens; can be disabled from the same toggle
 
