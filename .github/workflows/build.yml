@@ -1,4 +1,4 @@
-name: Build HomeVision IPK
+name: Build TWRVision IPK
 
 on:
   push:
@@ -15,20 +15,12 @@ jobs:
       - name: Get the code
         uses: actions/checkout@v4
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install the LG webOS tools
-        run: npm install -g @webos-tools/cli
-
       - name: Read the version number
         id: ver
-        run: echo "version=$(node -p "require('./app/appinfo.json').version")" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(python3 -c "import json; print(json.load(open('app/appinfo.json'))['version'])")" >> "$GITHUB_OUTPUT"
 
-      - name: Package the app
-        run: ares-package app -o out
+      - name: Build IPK
+        run: python3 build_ipk.py
 
       - name: Publish to Releases
         env:
@@ -36,4 +28,4 @@ jobs:
         run: |
           TAG="v${{ steps.ver.outputs.version }}"
           gh release delete "$TAG" --yes --cleanup-tag || true
-          gh release create "$TAG" out/*.ipk --title "HomeVision $TAG" --notes "Install file for the TV. See INSTALL.md."
+          gh release create "$TAG" *.ipk --title "TWRVision $TAG" --notes "Install file for the TV. See INSTALL.md."
