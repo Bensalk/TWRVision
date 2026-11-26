@@ -22,7 +22,7 @@ WebOS IPTV app for LG TVs by Bensal. JavaScript/HTML web app. Public repo. Write
 - Every push to `main` builds an IPK on GitHub Actions and publishes a GitHub Release.
 - **Packaging: always use `build_ipk.py`**, never `ares-package`. The GNU `ar` format used by ares-package produces an IPK that fails with error -5 on LG TVs. `build_ipk.py` uses Python's tarfile module and a custom ar writer that the TV accepts correctly.
 - **On every user-visible change bump `version`** in `app/appinfo.json` and add an entry at the top of `CHANGELOG.md`.
-- Current version: 0.4.33. App ID: `com.bensal.twrvision`.
+- Current version: 0.4.36. App ID: `com.bensal.twrvision`.
 - Commit identity: `343577983+Bensalk@users.noreply.github.com`. Never a personal email.
 - `main` is protected (no force push, no deletion). Private vulnerability reporting is on.
 
@@ -30,7 +30,7 @@ WebOS IPTV app for LG TVs by Bensal. JavaScript/HTML web app. Public repo. Write
 
 - App ID: `com.bensal.twrvision`
 - WebOS "web" type app. Runs in the TV's web engine.
-- Current version: 0.4.33
+- Current version: 0.4.36
 - Settings stored in localStorage on the TV.
 
 ## Working style

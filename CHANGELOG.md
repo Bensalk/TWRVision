@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.33
+## 0.4.36
 - Version bump to fix same-version install conflict on LG TV
 
 ## 0.4.32
