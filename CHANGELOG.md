@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.33
+- Version bump to fix same-version install conflict on LG TV
+
 ## 0.4.32
 - Live TV no longer auto-plays on open — shows channel list; last-played channel scrolled into view; play only on OK press
 
